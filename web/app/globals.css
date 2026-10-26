@@ -1,0 +1,129 @@
+@import "tailwindcss";
+@import "@fontsource/ibm-plex-sans-arabic/300.css";
+@import "@fontsource/ibm-plex-sans-arabic/400.css";
+@import "@fontsource/ibm-plex-sans-arabic/500.css";
+@import "@fontsource/ibm-plex-sans-arabic/600.css";
+@import "@fontsource/ibm-plex-sans-arabic/700.css";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * REC Smart Audio tokens
+ *   ink      — text / sidebar
+ *   paper    — page background
+ *   surface  — panels
+ *   line     — hairlines & borders
+ *   petrol   — primary actions
+ *   sodium   — ADHAN / next prayer / live state ONLY
+ */
+:root {
+  --ink: #14212b;
+  --ink-2: #45545f;
+  --ink-3: #6f7d87;
+  --paper: #f4f6f7;
+  --surface: #ffffff;
+  --surface-2: #eef2f4;
+  --line: #d8e0e4;
+  --petrol: #0e5e6f;
+  --petrol-hover: #0a4b59;
+  --petrol-soft: #e2eff2;
+  --sodium: #e8a33d;
+  --sodium-ink: #7a4b07;
+  --sodium-soft: #fbf0dd;
+  --ok: #2f8f5b;
+  --ok-soft: #e3f3ea;
+  --fault: #c2412d;
+  --fault-soft: #fbe7e3;
+  --side: #14212b;
+  --side-ink: #c9d4da;
+  --side-active: #1f3340;
+  color-scheme: light;
+}
+
+.dark {
+  --ink: #e6edf0;
+  --ink-2: #b2c0c8;
+  --ink-3: #8597a2;
+  --paper: #0f1a21;
+  --surface: #16242d;
+  --surface-2: #1c2e38;
+  --line: #2a3d48;
+  --petrol: #3fa7b8;
+  --petrol-hover: #5cbccc;
+  --petrol-soft: #173842;
+  --sodium: #f0b455;
+  --sodium-ink: #f6cd8a;
+  --sodium-soft: #3a2c14;
+  --ok: #4fbf82;
+  --ok-soft: #173326;
+  --fault: #ef7a64;
+  --fault-soft: #3b1f1a;
+  --side: #0b141a;
+  --side-ink: #b5c3cb;
+  --side-active: #18303b;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --font-sans: "IBM Plex Sans Arabic", system-ui, sans-serif;
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-line: var(--line);
+  --color-petrol: var(--petrol);
+  --color-petrol-hover: var(--petrol-hover);
+  --color-petrol-soft: var(--petrol-soft);
+  --color-sodium: var(--sodium);
+  --color-sodium-ink: var(--sodium-ink);
+  --color-sodium-soft: var(--sodium-soft);
+  --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
+  --color-fault: var(--fault);
+  --color-fault-soft: var(--fault-soft);
+  --color-side: var(--side);
+  --color-side-ink: var(--side-ink);
+  --color-side-active: var(--side-active);
+}
+
+html,
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.tnum {
+  font-variant-numeric: tabular-nums;
+}
+
+:focus-visible {
+  outline: 2px solid var(--petrol);
+  outline-offset: 2px;
+}
+
+input[type="range"] {
+  accent-color: var(--petrol);
+}
+
+/* live indicator pulse — the only ambient motion in the app */
+@keyframes rec-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+.live-dot {
+  animation: rec-pulse 1.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .live-dot { animation: none; }
+  * { transition-duration: 0ms !important; }
+}

@@ -1,0 +1,17 @@
+{
+  "description": "Shared schedule-recurrence vectors. Verified by server/test/recurrence.test.ts AND agent/tests/test_recurrence.py so both implementations agree.",
+  "timezone": "Asia/Riyadh",
+  "prayers": { "2026-10-25:DHUHR": "2026-10-25T08:37:00Z", "2026-10-26:DHUHR": "2026-10-26T08:37:00Z", "2026-10-27:MAGHRIB": "2026-10-27T14:17:00Z" },
+  "cases": [
+    { "schedule": { "id": "daily", "recurrence": "DAILY", "daysOfWeek": [], "anchor": "FIXED_TIME", "time": "07:00", "anchorPrayer": null, "anchorOffsetMinutes": 0, "startDate": "2026-10-25", "endDate": "2026-10-27", "isPaused": false },
+      "expect": { "2026-10-24": null, "2026-10-25": ["2026-10-25T04:00:00Z", "sched:daily:2026-10-25T07:00"], "2026-10-27": ["2026-10-27T04:00:00Z", "sched:daily:2026-10-27T07:00"], "2026-10-28": null } },
+    { "schedule": { "id": "weekly", "recurrence": "WEEKLY", "daysOfWeek": [0, 4], "anchor": "FIXED_TIME", "time": "16:00", "anchorPrayer": null, "anchorOffsetMinutes": 0, "startDate": "2026-01-01", "endDate": null, "isPaused": false },
+      "expect": { "2026-10-25": ["2026-10-25T13:00:00Z", "sched:weekly:2026-10-25T16:00"], "2026-10-26": null, "2026-10-29": ["2026-10-29T13:00:00Z", "sched:weekly:2026-10-29T16:00"], "2026-10-31": null } },
+    { "schedule": { "id": "once", "recurrence": "ONCE", "daysOfWeek": [], "anchor": "FIXED_TIME", "time": "23:59", "anchorPrayer": null, "anchorOffsetMinutes": 0, "startDate": "2026-10-26", "endDate": null, "isPaused": false },
+      "expect": { "2026-10-25": null, "2026-10-26": ["2026-10-26T20:59:00Z", "sched:once:2026-10-26T23:59"], "2026-10-27": null } },
+    { "schedule": { "id": "pre-dhuhr", "recurrence": "DAILY", "daysOfWeek": [], "anchor": "PRAYER", "time": null, "anchorPrayer": "DHUHR", "anchorOffsetMinutes": -15, "startDate": "2026-10-25", "endDate": null, "isPaused": false },
+      "expect": { "2026-10-25": ["2026-10-25T08:22:00Z", "sched:pre-dhuhr:2026-10-25T11:22"], "2026-10-26": ["2026-10-26T08:22:00Z", "sched:pre-dhuhr:2026-10-26T11:22"], "2026-10-27": null } },
+    { "schedule": { "id": "after-maghrib", "recurrence": "WEEKLY", "daysOfWeek": [2], "anchor": "PRAYER", "time": null, "anchorPrayer": "MAGHRIB", "anchorOffsetMinutes": 20, "startDate": "2026-10-01", "endDate": null, "isPaused": false },
+      "expect": { "2026-10-27": ["2026-10-27T14:37:00Z", "sched:after-maghrib:2026-10-27T17:37"] } }
+  ]
+}

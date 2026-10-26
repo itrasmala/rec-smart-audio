@@ -1,0 +1,92 @@
+# REC Smart Audio — server deployment (dashboard + API + database + HTTPS)
+#
+# Easiest: run install.sh (it writes .env and starts everything).
+# Manual:
+#   cp .env.example .env   # set DOMAIN, POSTGRES_PASSWORD, SETUP_CODE
+#   docker compose up -d --build
+#
+# The Audio Agent is NOT a container: it runs on the Windows/Linux machine that is wired or
+# paired to the speakers. Install it from the dashboard (Devices > Add device) with one command.
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: rec_audio
+      POSTGRES_USER: rec
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rec -d rec_audio"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [internal]
+
+  app:
+    # prebuilt image published by GitHub Actions; falls back to a local build
+    image: ${REC_IMAGE:-rec-smart-audio:local}
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://rec:${POSTGRES_PASSWORD}@db:5432/rec_audio
+      PUBLIC_ORIGIN: https://${DOMAIN:?set DOMAIN in .env}
+      COOKIE_SECURE: "true"
+      TRUST_PROXY: "true"
+      # one-time code for creating the first admin in the browser
+      SETUP_CODE: ${SETUP_CODE:-}
+      SESSION_TTL_HOURS: ${SESSION_TTL_HOURS:-12}
+      MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-60}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    volumes:
+      - audio:/data
+    networks: [internal, edge]
+    # not published: only reachable through Caddy
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on: [app]
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks: [edge]
+
+  # nightly database backup (kept 14 days) into ./backups
+  backup:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    depends_on: [db]
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - ./backups:/backups
+    entrypoint: >
+      sh -c 'while true; do
+        pg_dump -h db -U rec -d rec_audio -Fc -f /backups/rec_audio_$$(date +%F).dump &&
+        find /backups -name "*.dump" -mtime +14 -delete;
+        sleep 86400; done'
+    networks: [internal]
+
+volumes:
+  pgdata:
+  audio:
+  caddy_data:
+  caddy_config:
+
+networks:
+  internal:
+    internal: true
+  edge:

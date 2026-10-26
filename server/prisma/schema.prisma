@@ -1,0 +1,331 @@
+// REC Smart Audio — قاعدة البيانات
+// PostgreSQL + Prisma ORM 7 (driver adapter: @prisma/adapter-pg)
+//
+// ملاحظات تصميم:
+// - التواريخ "المحلية" (تاريخ صلاة، تاريخ بداية/نهاية جدولة) تُخزن كنص YYYY-MM-DD
+//   بتوقيت المؤسسة (Asia/Riyadh) لتفادي أخطاء فروق المناطق الزمنية.
+// - الأوقات المحلية تُخزن كنص HH:mm.
+// - كل تنفيذ صوتي له eventKey حتمي، وفريد لكل جهاز (deviceId + eventKey)
+//   لمنع التكرار عند المزامنة بعد انقطاع الإنترنت.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+  moduleFormat = "esm"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  SUPER_ADMIN
+  AUDIO_MANAGER
+  VIEWER
+}
+
+enum AudioCategory {
+  ADHAN
+  STAFF_ANNOUNCEMENT
+  ADMIN_ALERT
+  SAFETY
+  GENERAL
+}
+
+enum Prayer {
+  FAJR
+  DHUHR
+  ASR
+  MAGHRIB
+  ISHA
+}
+
+// أولوية التشغيل: الأذان (1) أعلى من الطوارئ (2) ثم الإعلانات (3) ثم العامة (4)
+enum AudioPriority {
+  ADHAN
+  EMERGENCY
+  ANNOUNCEMENT
+  GENERAL
+}
+
+enum Recurrence {
+  ONCE
+  DAILY
+  WEEKLY
+}
+
+enum ScheduleAnchor {
+  FIXED_TIME
+  PRAYER
+}
+
+enum OutputType {
+  BLUETOOTH
+  AUX
+  USB
+  HDMI
+  OTHER
+  UNKNOWN
+}
+
+enum CommandStatus {
+  PENDING
+  SENT
+  ACKED
+  FAILED
+  EXPIRED
+}
+
+enum PlaybackSource {
+  ADHAN
+  SCHEDULE
+  MANUAL
+  TEST
+}
+
+enum PlaybackStatus {
+  QUEUED
+  STARTED
+  COMPLETED
+  INTERRUPTED
+  FAILED
+  SKIPPED
+}
+
+enum PostAdhanBehavior {
+  RESUME
+  RESTART
+  DISCARD
+}
+
+model User {
+  id                 String    @id @default(uuid())
+  username           String    @unique
+  displayName        String
+  passwordHash       String
+  role               Role      @default(VIEWER)
+  isActive           Boolean   @default(true)
+  mustChangePassword Boolean   @default(false)
+  failedLogins       Int       @default(0)
+  lockedUntil        DateTime?
+  lastLoginAt        DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  sessions  Session[]
+  files     AudioFile[]
+  schedules Schedule[]
+  commands  Command[]
+  audits    AuditLog[]
+}
+
+model Session {
+  id         String   @id @default(uuid())
+  tokenHash  String   @unique
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ip         String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+  expiresAt  DateTime
+
+  @@index([userId])
+}
+
+model AudioFile {
+  id           String        @id @default(uuid())
+  title        String
+  originalName String
+  category     AudioCategory @default(GENERAL)
+  format       String // mp3 | wav
+  mimeType     String
+  sizeBytes    Int
+  durationSec  Float
+  sha256       String
+  storageKey   String        @unique
+  uploadedById String?
+  uploadedBy   User?         @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  schedules     Schedule[]
+  prayerConfigs PrayerConfig[]
+
+  @@index([category])
+}
+
+// إعدادات حساب أوقات الصلاة (سجل واحد id=1)
+model PrayerSettings {
+  id               Int      @id @default(1)
+  country          String   @default("المملكة العربية السعودية")
+  city             String   @default("الرياض")
+  latitude         Float    @default(24.7136)
+  longitude        Float    @default(46.6753)
+  timezone         String   @default("Asia/Riyadh")
+  method           String   @default("UMM_AL_QURA")
+  madhab           String   @default("SHAFI")
+  // أم القرى: العشاء بعد المغرب بـ 90 دقيقة، و120 دقيقة في رمضان
+  ramadanIshaExtra Boolean  @default(true)
+  updatedAt        DateTime @updatedAt
+}
+
+// إعدادات كل صلاة
+model PrayerConfig {
+  prayer        Prayer     @id
+  adhanEnabled  Boolean    @default(true)
+  fileId        String?
+  file          AudioFile? @relation(fields: [fileId], references: [id], onDelete: SetNull)
+  volume        Int? // null = مستوى الأذان الافتراضي
+  offsetMinutes Int        @default(0) // تأخير/تقديم بالدقائق
+  fixedTime     String? // HH:mm — وقت ثابت يدوي يتجاوز الحساب
+  updatedAt     DateTime   @updatedAt
+}
+
+// تعديل يدوي لتاريخ محدد (لمطابقة تقويم أم القرى المعتمد)
+model PrayerOverride {
+  id        String   @id @default(uuid())
+  date      String // YYYY-MM-DD
+  prayer    Prayer
+  time      String // HH:mm
+  note      String?
+  createdAt DateTime @default(now())
+
+  @@unique([date, prayer])
+}
+
+// إعدادات النظام العامة (سجل واحد id=1)
+model SystemSettings {
+  id                         Int               @id @default(1)
+  orgName                    String            @default("رسملة الطاقة للمقاولات")
+  systemName                 String            @default("REC Smart Audio")
+  defaultAdhanVolume         Int               @default(85)
+  postAdhanBehavior          PostAdhanBehavior @default(DISCARD)
+  postAdhanQuietMinutes      Int               @default(0)
+  emergencyMayInterruptAdhan Boolean           @default(false)
+  managerMaxVolume           Int               @default(80)
+  volumeStep                 Int               @default(5)
+  adhanCatchUpMinutes        Int               @default(3)
+  scheduleCatchUpMinutes     Int               @default(5)
+  queuedItemTtlMinutes       Int               @default(15)
+  commandTtlSeconds          Int               @default(45)
+  // يزداد مع كل تعديل يؤثر على أجهزة التشغيل لتحديد الحاجة للمزامنة
+  configRevision             Int               @default(1)
+  updatedAt                  DateTime          @updatedAt
+}
+
+model Device {
+  id               String     @id @default(uuid())
+  name             String
+  description      String?
+  location         String?
+  tokenHash        String     @unique
+  tokenPrefix      String
+  revokedAt        DateTime?
+  os               String?
+  hostname         String?
+  agentVersion     String?
+  outputType       OutputType @default(UNKNOWN)
+  outputDeviceName String? // اسم مخرج الصوت المختار (كما يظهر في نظام التشغيل)
+  speakerName      String? // المخرج المستخدم فعليًا (تقرير الجهاز)
+  bluetoothMac     String?
+  volume           Int        @default(60)
+  maxVolume        Int        @default(100)
+  isOnline         Boolean    @default(false)
+  lastSeenAt       DateTime?
+  lastError        String?
+  lastErrorAt      DateTime?
+  lastStatus       Json?
+  availableOutputs Json?
+  configRevision   Int        @default(0) // آخر إصدار إعدادات أكّد الجهاز استلامه
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  schedules Schedule[] @relation("ScheduleDevices")
+  commands  Command[]
+  playbacks PlaybackLog[]
+}
+
+model Schedule {
+  id                  String         @id @default(uuid())
+  name                String
+  fileId              String
+  file                AudioFile      @relation(fields: [fileId], references: [id], onDelete: Restrict)
+  priority            AudioPriority  @default(ANNOUNCEMENT)
+  recurrence          Recurrence     @default(DAILY)
+  daysOfWeek          Int[] // 0=الأحد ... 6=السبت (للتكرار الأسبوعي)
+  anchor              ScheduleAnchor @default(FIXED_TIME)
+  time                String? // HH:mm عند FIXED_TIME
+  anchorPrayer        Prayer?
+  anchorOffsetMinutes Int            @default(0)
+  startDate           String // YYYY-MM-DD
+  endDate             String?
+  volume              Int?
+  isPaused            Boolean        @default(false)
+  allDevices          Boolean        @default(true)
+  devices             Device[]       @relation("ScheduleDevices")
+  createdById         String?
+  createdBy           User?          @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+
+  @@index([fileId])
+}
+
+model Command {
+  id          String        @id @default(uuid())
+  deviceId    String
+  device      Device        @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  type        String
+  payload     Json
+  status      CommandStatus @default(PENDING)
+  error       String?
+  createdById String?
+  createdBy   User?         @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt   DateTime      @default(now())
+  sentAt      DateTime?
+  ackedAt     DateTime?
+  expiresAt   DateTime
+
+  @@index([deviceId, status])
+}
+
+model PlaybackLog {
+  id         String         @id @default(uuid())
+  deviceId   String
+  device     Device         @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+  eventKey   String
+  source     PlaybackSource
+  priority   AudioPriority
+  fileId     String?
+  title      String
+  prayer     Prayer?
+  scheduleId String?
+  commandId  String?
+  status     PlaybackStatus
+  error      String?
+  offline    Boolean        @default(false)
+  startedAt  DateTime?
+  endedAt    DateTime?
+  receivedAt DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  @@unique([deviceId, eventKey])
+  @@index([startedAt])
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  username   String?
+  action     String
+  entityType String?
+  entityId   String?
+  details    Json?
+  ip         String?
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([action])
+}

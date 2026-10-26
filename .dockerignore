@@ -1,0 +1,13 @@
+**/node_modules
+**/.next
+web/out
+server/dist
+server/src/generated
+server/.env
+server/data
+server/.test-storage
+agent/tests
+agent/.venv
+**/__pycache__
+backups
+.git

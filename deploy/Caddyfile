@@ -1,0 +1,29 @@
+# Automatic HTTPS (Let's Encrypt) + HTTP/2/3, reverse proxy to the app (REST + WebSocket).
+
+{$DOMAIN} {
+	encode zstd gzip
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+	# uploads up to 60 MB
+	request_body {
+		max_size 64MB
+	}
+	reverse_proxy app:4000 {
+		# keep agent/browser WebSockets open
+		flush_interval -1
+		transport http {
+			read_timeout 0
+			write_timeout 0
+		}
+	}
+	log {
+		output file /data/access.log {
+			roll_size 20MiB
+			roll_keep 5
+		}
+	}
+}

@@ -1,0 +1,30 @@
+# REC Smart Audio — Local Audio Agent (systemd *user* service)
+#
+# Runs inside the user's session so it can use PipeWire/PulseAudio and Bluetooth audio.
+# `loginctl enable-linger <user>` makes it start at boot without anyone logging in.
+# Installed by install.sh to: ~/.config/systemd/user/rec-agent.service
+
+[Unit]
+Description=REC Smart Audio - Local Audio Agent
+Documentation=file://%h/rec-agent/app/README.md
+After=network-online.target pipewire.service pipewire-pulse.service pulseaudio.service
+Wants=network-online.target
+# never give up restarting
+StartLimitIntervalSec=0
+
+[Service]
+Type=notify
+NotifyAccess=main
+WorkingDirectory=%h/rec-agent/app
+ExecStart=%h/rec-agent/venv/bin/python -m rec_agent --config %h/rec-agent/config.toml
+Environment=PYTHONUNBUFFERED=1
+Environment=PYGAME_HIDE_SUPPORT_PROMPT=1
+Restart=always
+RestartSec=5
+# the agent pings systemd every second; if it freezes for 2 minutes systemd kills & restarts it
+WatchdogSec=120
+TimeoutStartSec=60
+TimeoutStopSec=15
+
+[Install]
+WantedBy=default.target

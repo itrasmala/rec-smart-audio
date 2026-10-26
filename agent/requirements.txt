@@ -1,0 +1,7 @@
+# REC Audio Agent — Python 3.10+
+websockets>=13,<18
+httpx>=0.27,<1
+pygame>=2.5,<3
+adhanpy==1.0.5
+hijridate>=2.5,<3
+tzdata>=2024.1   # time-zone database (required on Windows)

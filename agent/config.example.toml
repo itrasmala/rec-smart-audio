@@ -1,0 +1,47 @@
+# ─────────────────────────────────────────────────────────────
+#  REC Smart Audio — إعدادات جهاز التشغيل المحلي (Audio Agent)
+# ─────────────────────────────────────────────────────────────
+
+# عنوان لوحة التحكم (HTTPS إلزامي في الإنتاج)
+server_url = "https://audio.example.com"
+
+# رمز الجهاز الذي يظهر مرة واحدة عند إضافة الجهاز من صفحة "الأجهزة والسماعات"
+# يمكن بدلًا من ذلك وضعه في ملف منفصل محمي:  token_file = "/path/to/token"
+token = "rec_xxxxxxxx_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+# مجلد البيانات (الإعدادات المخزنة، الملفات الصوتية، السجلات)
+# Windows الافتراضي: C:\ProgramData\REC-Audio-Agent
+# Linux الافتراضي:   ~/.local/state/rec-agent
+# data_dir = "/var/lib/rec-agent"
+
+# pygame = تشغيل فعلي على السماعات | null = محاكاة بدون صوت (للاختبار)
+backend = "pygame"
+
+# اسم مخرج الصوت كما يظهر في:  python -m rec_agent --list-outputs
+# اتركه فارغًا لاستخدام المخرج المختار من لوحة التحكم (أو الافتراضي)
+output_device = ""
+# إن لم يتوفر المخرج المطلوب: استخدم المخرج الافتراضي بدل الصمت
+fallback_to_default_output = true
+
+# تنزيل كل ملفات المكتبة محليًا (true) أو الملفات الأساسية فقط: الأذان + المجدولة (false)
+cache_all_files = true
+
+log_level = "INFO"
+
+# فحص الاتصال بالإنترنت (host:port) عند انقطاع الخادم
+internet_check = "1.1.1.1:53"
+
+# واجهة صحة محلية على 127.0.0.1 فقط (0 لتعطيلها):  curl http://127.0.0.1:8765/health
+health_port = 8765
+
+# إعادة تشغيل العملية إذا توقفت الحلقة الرئيسية عن الاستجابة (ثوانٍ)
+watchdog_timeout = 90
+
+# التحقق من شهادة TLS: true | false (للاختبار فقط) | مسار ملف CA داخلي
+tls_verify = true
+
+[bluetooth]
+# عنوان MAC لسماعة البلوتوث المقترنة مسبقًا (اتركه فارغًا لاستخدام القيمة من لوحة التحكم)
+mac = ""
+auto_reconnect = true
+check_interval = 15
