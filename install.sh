@@ -3,7 +3,7 @@
 #  REC Smart Audio — server installer (Ubuntu / Debian)
 #
 #  One command on a fresh server:
-#     curl -fsSL https://raw.githubusercontent.com/__REPO__/main/install.sh | sudo bash
+#     curl -fsSL https://raw.githubusercontent.com/itrasmala/rec-smart-audio/main/install.sh | sudo bash
 #  or, from a clone of the repository:
 #     sudo ./install.sh
 #  Non-interactive:  REC_DOMAIN=audio.example.com sudo -E ./install.sh
@@ -14,7 +14,7 @@
 # ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
 
-REPO="${REC_REPO:-__REPO__}"
+REPO="${REC_REPO:-itrasmala/rec-smart-audio}"
 UNSET="__RE""PO__"   # placeholder filled in automatically on GitHub (split so it is not replaced)
 BRANCH="${REC_BRANCH:-main}"
 DIR="${REC_DIR:-/opt/rec-smart-audio}"

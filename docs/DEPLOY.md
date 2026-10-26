@@ -1,7 +1,7 @@
 # نشر لوحة التحكم على استضافة سحابية
 
 > **الطريقة السهلة:** أمر واحد على خادم Ubuntu — راجع [README](../README.md#1-الخادم--أمر-واحد):
-> `curl -fsSL https://raw.githubusercontent.com/__REPO__/main/install.sh | sudo bash`
+> `curl -fsSL https://raw.githubusercontent.com/itrasmala/rec-smart-audio/main/install.sh | sudo bash`
 > يقوم بكل الخطوات أدناه تلقائيًا. هذا المستند للنشر اليدوي والتفاصيل.
 
 الخادم ولوحة التحكم وقاعدة البيانات تُنشر معًا بـ Docker Compose على أي خادم Linux (VPS) — مثلًا مزود سحابي داخل المملكة لتقليل زمن الاستجابة ولمتطلبات سيادة البيانات.

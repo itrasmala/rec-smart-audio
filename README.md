@@ -11,7 +11,7 @@
 على أي خادم سحابي **Ubuntu** (مثلًا 2 vCPU و 2GB RAM):
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/__REPO__/main/install.sh | sudo bash
+curl -fsSL https://raw.githubusercontent.com/itrasmala/rec-smart-audio/main/install.sh | sudo bash
 ```
 
 يثبّت كل شيء (Docker، قاعدة البيانات، HTTPS تلقائي)، ثم يعرض لك:
