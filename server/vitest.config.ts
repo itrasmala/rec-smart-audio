@@ -10,6 +10,8 @@ export default defineConfig({
     env: {
       NODE_ENV: "test",
       DATABASE_URL: process.env.TEST_DATABASE_URL ?? "postgresql://rec:rec@localhost:5432/rec_test",
+      // TEST_DB=builtin runs the whole suite on the built-in (PGlite) database used in local mode
+      ...(process.env.TEST_DB === "builtin" ? { DB_DIR: "./.test-builtin-db" } : {}),
       STORAGE_DIR: "./.test-storage",
       WEB_DIR: "./.no-web",
       COOKIE_SECURE: "false",

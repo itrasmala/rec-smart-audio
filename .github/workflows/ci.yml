@@ -35,6 +35,10 @@ jobs:
       - run: npm ci
       - run: npx tsc --noEmit -p .
       - run: npm test
+      - name: Same tests on the built-in database (one-PC mode)
+        run: npm test
+        env:
+          TEST_DB: builtin
 
   web:
     name: Dashboard build

@@ -1,0 +1,80 @@
+name: Windows package
+
+# Builds the ready-to-run package that install-windows.ps1 downloads (one PC, no server):
+# Node.js + dashboard + server with built-in database + speaker agent, then smoke-tests it on
+# Windows and publishes it as the "windows-bundle" release asset.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: windows-package
+  cancel-in-progress: true
+
+jobs:
+  package:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Build package
+        shell: bash
+        run: |
+          export NODE_EXE="$(command -v node).exe"
+          [ -f "$NODE_EXE" ] || export NODE_EXE="$(command -v node)"
+          scripts/build-windows-bundle.sh "$RUNNER_TEMP/bundle"
+
+      - name: Smoke test (start server with built-in database, check dashboard + pairing)
+        shell: pwsh
+        run: |
+          $b = "$env:RUNNER_TEMP\bundle"
+          $d = "$env:RUNNER_TEMP\smoke-data"
+          $env:NODE_ENV = "production"; $env:PORT = "4567"; $env:DB_DIR = "$d\db"; $env:STORAGE_DIR = "$d\audio"
+          $env:WEB_DIR = "$b\app\web\out"; $env:AGENT_DIR = "$b\app\agent"; $env:COOKIE_SECURE = "false"
+          $env:SETUP_CODE = "TEST-2345"; $env:LOCAL_AGENT_TOKEN_FILE = "$d\agent-token.txt"
+          $p = Start-Process "$b\app\node.exe" -ArgumentList "dist\index.js" -WorkingDirectory "$b\app\server" -PassThru `
+                 -RedirectStandardOutput "$env:RUNNER_TEMP\smoke.log" -RedirectStandardError "$env:RUNNER_TEMP\smoke.err"
+          $ok = $false
+          for ($i = 0; $i -lt 60; $i++) { try { Invoke-RestMethod http://127.0.0.1:4567/api/health | Out-Null; $ok = $true; break } catch { Start-Sleep 2 } }
+          if (-not $ok) { Get-Content "$env:RUNNER_TEMP\smoke.log", "$env:RUNNER_TEMP\smoke.err"; throw "server did not start" }
+          if ((Invoke-WebRequest http://127.0.0.1:4567/ -UseBasicParsing).StatusCode -ne 200) { throw "dashboard not served" }
+          if (-not (Test-Path "$d\agent-token.txt")) { throw "local device was not paired" }
+          if (-not (Invoke-RestMethod http://127.0.0.1:4567/api/setup/status).needsSetup) { throw "setup state wrong" }
+          Invoke-WebRequest http://127.0.0.1:4567/agent/rec-agent.tar.gz -UseBasicParsing -OutFile "$env:RUNNER_TEMP\a.tgz"
+          Stop-Process -Id $p.Id -Force
+          Write-Host "smoke test passed"
+
+      - name: Agent runs against the package (Python on Windows)
+        shell: pwsh
+        run: |
+          python -m pip install -q -r agent/requirements.txt
+          Push-Location "$env:RUNNER_TEMP\bundle\app\agent"
+          python -c "import rec_agent, rec_agent.agent; print('agent imports OK', rec_agent.__version__)"
+          Pop-Location
+
+      - name: Zip
+        shell: pwsh
+        run: |
+          Set-Location "$env:RUNNER_TEMP\bundle"
+          7z a -tzip -mx=7 "$env:GITHUB_WORKSPACE\rec-smart-audio-windows.zip" app install-windows.ps1 uninstall-windows.ps1 | Out-Null
+          "{0:N1} MB" -f ((Get-Item "$env:GITHUB_WORKSPACE\rec-smart-audio-windows.zip").Length / 1MB)
+
+      - name: Publish release asset
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          notes="Ready-to-run Windows package for install-windows.ps1 (commit ${GITHUB_SHA::7})."
+          if gh release view windows-bundle >/dev/null 2>&1; then
+            gh release upload windows-bundle rec-smart-audio-windows.zip --clobber
+            gh release edit windows-bundle --notes "$notes"
+          else
+            gh release create windows-bundle rec-smart-audio-windows.zip --title "Windows package" --notes "$notes" --target "$GITHUB_SHA"
+          fi

@@ -19,6 +19,10 @@ export const config = {
   host: process.env.HOST ?? "0.0.0.0",
   port: int(process.env.PORT, 4000),
   databaseUrl: process.env.DATABASE_URL ?? "postgresql://rec:rec@localhost:5432/rec_audio",
+  /** Local mode: use the built-in database stored in this folder instead of PostgreSQL. */
+  dbDir: process.env.DB_DIR ? path.resolve(process.env.DB_DIR) : null,
+  /** Local mode: create a device for this PC on first start and write its token here (for the installer). */
+  localAgentTokenFile: process.env.LOCAL_AGENT_TOKEN_FILE ? path.resolve(process.env.LOCAL_AGENT_TOKEN_FILE) : null,
   storageDir: path.resolve(process.env.STORAGE_DIR ?? "./data/audio"),
   webDir: path.resolve(process.env.WEB_DIR ?? "../web/out"),
   /** Agent sources, packaged at startup for the one-line installer. */
