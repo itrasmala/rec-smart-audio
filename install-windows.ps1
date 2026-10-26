@@ -24,24 +24,24 @@ $ProgressPreference = "SilentlyContinue"
 $ScriptUrl = "https://raw.githubusercontent.com/itrasmala/rec-smart-audio/main/install-windows.ps1"
 $ServerService = "RECAudioServer"
 
-function Step($en, $ar) { Write-Host ""; Write-Host "==> $en" -ForegroundColor Cyan; if ($ar) { Write-Host "    $ar" -ForegroundColor DarkGray } }
+# console output is English only: the classic Windows console cannot render Arabic correctly
+function Step($en, $ar) { Write-Host ""; Write-Host "==> $en" -ForegroundColor Cyan }
 function Ok($msg) { Write-Host "    [OK] $msg" -ForegroundColor Green }
 function Warn($msg) { Write-Host "    [!] $msg" -ForegroundColor Yellow }
 
 # ------------------------------------------------------------------ administrator
 $id = [Security.Principal.WindowsIdentity]::GetCurrent()
 if (-not (New-Object Security.Principal.WindowsPrincipal($id)).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
-  Write-Host "Asking for administrator rights... | طلب صلاحيات المسؤول" -ForegroundColor Cyan
+  Write-Host "Asking for administrator rights..." -ForegroundColor Cyan
   $cmd = "irm '$ScriptUrl' | iex"
   if ($PSCommandPath) { $cmd = "& '$PSCommandPath' -InstallDir '$InstallDir' -Port $Port" }
   Start-Process powershell -Verb RunAs -ArgumentList "-NoProfile -ExecutionPolicy Bypass -NoExit -Command `"$cmd`""
-  Write-Host "Continue in the new administrator window. | أكمل في النافذة الجديدة." -ForegroundColor Yellow
+  Write-Host "Continue in the new administrator window." -ForegroundColor Yellow
   return
 }
 
 Write-Host ""
 Write-Host "REC Smart Audio - installing on this PC (no server needed)" -ForegroundColor Cyan
-Write-Host "تثبيت نظام الإذاعة والأذان على هذا الكمبيوتر" -ForegroundColor Cyan
 
 $App = Join-Path $InstallDir "app"
 $Data = Join-Path $InstallDir "data"
@@ -82,8 +82,13 @@ Start-Sleep -Seconds 2
 Step "Installing to $App" "تثبيت الملفات"
 $tmp = Join-Path $env:TEMP ("rec-pkg-" + [Guid]::NewGuid().ToString("N").Substring(0, 8))
 New-Item -ItemType Directory -Force -Path $tmp | Out-Null
-& (Join-Path $env:SystemRoot "System32\tar.exe") -xf $zip -C $tmp
-if ($LASTEXITCODE -ne 0) { throw "Could not extract the package" }
+Add-Type -AssemblyName System.IO.Compression.FileSystem
+try {
+  [System.IO.Compression.ZipFile]::ExtractToDirectory($zip, $tmp)
+} catch {
+  throw "Could not extract the package: $($_.Exception.Message)"
+}
+if (-not (Test-Path (Join-Path $tmp "app\node.exe"))) { throw "The package is incomplete (app\node.exe missing). Run the command again." }
 if (Test-Path $App) { Remove-Item -Recurse -Force $App }
 Move-Item (Join-Path $tmp "app") $App
 Remove-Item -Recurse -Force $tmp, $zip -ErrorAction SilentlyContinue
@@ -209,15 +214,14 @@ try { $needsSetup = (Invoke-RestMethod "http://127.0.0.1:$Port/api/setup/status"
 
 Write-Host ""
 Write-Host "==========================================================" -ForegroundColor Green
-Write-Host " REC Smart Audio is ready  |  النظام جاهز" -ForegroundColor Green
+Write-Host " REC Smart Audio is ready" -ForegroundColor Green
 Write-Host "==========================================================" -ForegroundColor Green
-Write-Host " On this PC / على هذا الكمبيوتر:      http://localhost:$Port"
-foreach ($ip in $ips) { Write-Host " From phones on the network / من الجوال: http://${ip}:$Port" }
+Write-Host " On this PC:                  http://localhost:$Port"
+foreach ($ip in $ips) { Write-Host " From phones on the network: http://${ip}:$Port" }
 if ($needsSetup) {
   Write-Host ""
-  Write-Host " Setup code / رمز الإعداد:  $SetupCode" -ForegroundColor Yellow
+  Write-Host " Setup code:  $SetupCode" -ForegroundColor Yellow
   Write-Host " Open the dashboard and enter this code to create the admin account."
-  Write-Host " افتح لوحة التحكم وأدخل هذا الرمز لإنشاء حساب المدير."
 }
 Write-Host ""
 Write-Host " A 'REC Smart Audio' shortcut was added to the desktop."

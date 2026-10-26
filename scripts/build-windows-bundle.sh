@@ -27,6 +27,9 @@ rm -rf "$NM/@prisma/studio-core" "$NM/@prisma/dev" "$NM/@prisma/engines" "$NM/@p
        "$NM/@prisma/fetch-engine" "$NM/@prisma/get-platform" "$NM/@prisma/config"
 find "$NM/@prisma/client/runtime" \( -name '*cockroachdb*' -o -name '*mysql*' -o -name '*sqlserver*' -o -name '*sqlite*' \) -delete
 find "$NM" \( -name '*.map' -o -name '*.d.ts' -o -name '*.d.mts' -o -name '*.d.cts' \) -delete
+# test fixtures are never loaded at runtime; some use non-ASCII names that Windows unzip tools reject
+find "$NM" -mindepth 2 -maxdepth 3 -type d \( -name test -o -name tests -o -name __tests__ \) -prune -exec rm -rf {} +
+LC_ALL=C find "$OUT/app" -name '*[^ -~]*' -prune -exec rm -rf {} +
 
 echo "==> agent"
 cp -r "$ROOT/agent/rec_agent" "$ROOT/agent/install" "$ROOT/agent/requirements.txt" \

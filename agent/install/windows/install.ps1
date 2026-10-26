@@ -26,7 +26,8 @@ $ProgressPreference = "SilentlyContinue"
 $ServiceName = "RECAudioAgent"
 [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
 
-function Step($en, $ar) { Write-Host ""; Write-Host "==> $en" -ForegroundColor Cyan; if ($ar) { Write-Host "    $ar" -ForegroundColor DarkGray } }
+# console output is English only: the classic Windows console cannot render Arabic correctly
+function Step($en, $ar) { Write-Host ""; Write-Host "==> $en" -ForegroundColor Cyan }
 function Ok($msg) { Write-Host "    [OK] $msg" -ForegroundColor Green }
 function Warn($msg) { Write-Host "    [!] $msg" -ForegroundColor Yellow }
 function Refresh-Path {
@@ -35,7 +36,7 @@ function Refresh-Path {
 
 $id = [Security.Principal.WindowsIdentity]::GetCurrent()
 if (-not (New-Object Security.Principal.WindowsPrincipal($id)).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
-  throw "Run PowerShell as Administrator  |  شغّل PowerShell كمسؤول"
+  throw "Run PowerShell as Administrator"
 }
 
 $Src = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
@@ -121,8 +122,8 @@ Ok "Libraries installed"
 Step "Writing configuration" "حفظ الإعدادات"
 $Conf = "$DataDir\config.toml"
 if (-not (Test-Path $Conf)) {
-  if (-not $Server) { $Server = Read-Host "Server URL / عنوان الخادم (https://...)" }
-  if (-not $Token) { $Token = Read-Host "Device token / رمز الجهاز" }
+  if (-not $Server) { $Server = Read-Host "Server URL (https://...)" }
+  if (-not $Token) { $Token = Read-Host "Device token" }
   $content = Get-Content "$Src\config.example.toml" -Raw -Encoding UTF8
   $content = $content -replace '(?m)^# data_dir = .*$', ("data_dir = '" + $DataDir + "'")
 } else {
@@ -221,7 +222,7 @@ try { $h = Invoke-RestMethod http://127.0.0.1:8765/health -TimeoutSec 5; $health
 
 Write-Host ""
 Write-Host "==========================================================" -ForegroundColor Green
-Write-Host " REC Audio Agent installed  |  اكتمل التثبيت" -ForegroundColor Green
+Write-Host " REC Audio Agent installed" -ForegroundColor Green
 Write-Host "==========================================================" -ForegroundColor Green
 Write-Host " Runs as:  $mode  (starts with Windows, restarts on failure)"
 if ($healthy) { Write-Host " Status:   running - output: $($h.output.name)" -ForegroundColor Green }
@@ -230,4 +231,3 @@ Write-Host " Log:      $DataDir\logs\agent.log"
 Write-Host " Outputs:  & '$VPy' -m rec_agent --config '$Conf' --list-outputs"
 Write-Host ""
 Write-Host " Next: open the dashboard > Live control > Test speakers"
-Write-Host " التالي: افتح لوحة التحكم > التحكم المباشر > اختبار السماعات"

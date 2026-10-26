@@ -19,14 +19,14 @@ $Server = $Server.TrimEnd('/')
 # ---- self-elevate (the service needs administrator rights) ----
 $id = [Security.Principal.WindowsIdentity]::GetCurrent()
 if (-not (New-Object Security.Principal.WindowsPrincipal($id)).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
-  Write-Host "Asking for administrator rights...  |  طلب صلاحيات المسؤول" -ForegroundColor Cyan
+  Write-Host "Asking for administrator rights..." -ForegroundColor Cyan
   $self = Join-Path $env:TEMP "rec-agent-bootstrap.ps1"
   $body = $MyInvocation.MyCommand.ScriptBlock.ToString()
   [IO.File]::WriteAllText($self, $body, (New-Object Text.UTF8Encoding $true))
   $argList = "-NoProfile -ExecutionPolicy Bypass -NoExit -File `"$self`" -Server `"$Server`" -Token `"$Token`""
   if ($ServiceUser) { $argList += " -ServiceUser `"$ServiceUser`"" }
   Start-Process powershell -Verb RunAs -ArgumentList $argList
-  Write-Host "Continue in the new administrator window.  |  أكمل في النافذة الجديدة." -ForegroundColor Yellow
+  Write-Host "Continue in the new administrator window." -ForegroundColor Yellow
   return
 }
 

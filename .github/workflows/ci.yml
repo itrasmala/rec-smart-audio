@@ -31,7 +31,7 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: server/package-lock.json
-      - run: sudo apt-get install -y -qq ffmpeg
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
       - run: npm ci
       - run: npx tsc --noEmit -p .
       - run: npm test
@@ -78,7 +78,7 @@ jobs:
       - run: python -m pytest -q
 
   installers:
-    name: Installer scripts
+    name: Installer scripts (PowerShell parse)
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -86,14 +86,16 @@ jobs:
         shell: pwsh
         run: |
           $failed = $false
-          foreach ($f in Get-ChildItem agent/install/windows/*.ps1) {
+          foreach ($f in @(Get-ChildItem agent/install/windows/*.ps1) + @(Get-ChildItem *.ps1)) {
             $errors = $null
             [System.Management.Automation.Language.Parser]::ParseFile($f.FullName, [ref]$null, [ref]$errors) | Out-Null
             if ($errors) { $errors | ForEach-Object { Write-Error "$($f.Name): $($_.Message)" }; $failed = $true }
           }
           if ($failed) { exit 1 }
-      - name: Shellcheck
-        shell: bash
-        run: |
-          pip install -q shellcheck-py
-          shellcheck -S warning install.sh agent/install/linux/*.sh
+
+  shellcheck:
+    name: Shell scripts (shellcheck)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: shellcheck -S warning install.sh agent/install/linux/*.sh scripts/*.sh
