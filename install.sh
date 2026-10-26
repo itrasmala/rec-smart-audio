@@ -15,6 +15,7 @@
 set -euo pipefail
 
 REPO="${REC_REPO:-__REPO__}"
+UNSET="__RE""PO__"   # placeholder filled in automatically on GitHub (split so it is not replaced)
 BRANCH="${REC_BRANCH:-main}"
 DIR="${REC_DIR:-/opt/rec-smart-audio}"
 
@@ -51,7 +52,7 @@ if [[ -n "$SELF_DIR" && -f "$SELF_DIR/docker-compose.yml" && "$SELF_DIR" != "$DI
 elif [[ -f "$DIR/docker-compose.yml" && -d "$DIR/.git" ]]; then
   git -C "$DIR" pull --ff-only
 elif [[ -z "$SELF_DIR" || ! -f "$SELF_DIR/docker-compose.yml" ]]; then
-  [[ "$REPO" == *"__REPO__"* ]] && die "Set REC_REPO=owner/repo or run ./install.sh from a clone of the repository."
+  [[ "$REPO" == "$UNSET" ]] && die "Set REC_REPO=owner/repo or run ./install.sh from a clone of the repository."
   apt-get install -y -qq git >/dev/null
   if [[ -d "$DIR/.git" ]]; then git -C "$DIR" pull --ff-only
   else
@@ -80,7 +81,7 @@ if [[ ! -f .env ]]; then
   CODE=""; for i in $(seq 1 8); do CODE+="${ALPHABET:$(( $(od -An -N2 -tu2 /dev/urandom) % ${#ALPHABET} )):1}"; done
   CODE="${CODE:0:4}-${CODE:4:4}"
   IMAGE=""
-  [[ "$REPO" != *"__REPO__"* ]] && IMAGE="ghcr.io/$(echo "$REPO" | tr '[:upper:]' '[:lower:]'):latest"
+  [[ "$REPO" != "$UNSET" ]] && IMAGE="ghcr.io/$(echo "$REPO" | tr '[:upper:]' '[:lower:]'):latest"
   umask 077
   cat > .env <<EOF
 DOMAIN=$DOMAIN

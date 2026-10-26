@@ -1,0 +1,30 @@
+name: Set repository name in install instructions
+
+# Runs once after the first push: replaces the __REPO__ placeholder in README / install.sh / docs
+# with this repository's real name, so the one-line install command works as shown.
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  fill-repo-name:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Replace placeholder
+        id: replace
+        run: |
+          files=$(grep -rl "__REPO__" --exclude-dir=.git --exclude-dir=.github . || true)
+          if [ -z "$files" ]; then echo "changed=false" >> "$GITHUB_OUTPUT"; exit 0; fi
+          echo "$files" | xargs sed -i "s#__REPO__#${GITHUB_REPOSITORY}#g"
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+      - name: Commit
+        if: steps.replace.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "Set repository name in install instructions"
+          git push
